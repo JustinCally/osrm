@@ -4,7 +4,7 @@
 \alias{osrmTrip}
 \title{Get the Travel Geometry Between Multiple Unordered Points}
 \usage{
-osrmTrip(loc, exclude = NULL, overview = "simplified", returnclass = "sp")
+osrmTrip(loc, exclude = NULL, overview = "simplified", returnclass = "sp", ...)
 }
 \arguments{
 \item{loc}{a SpatialPointsDataFrame or an sf object of the waypoints, or a data.frame with points as rows
@@ -15,7 +15,9 @@ and 3 columns: identifier, longitudes and latitudes (WGS84 decimal degrees).}
 \item{overview}{"full", "simplified". Add geometry either full (detailed) or simplified 
 according to highest zoom level it could be display on.}
 
-\item{returnclass}{if returnclass="sf" an sf LINESTRING is returned. 
+\item{returnclass}{if returnclass="sf" an sf LINESTRING is returned.}
+
+\item{...}{additional named arguments passed to the OSRM API (roundtrip, source, destination, annotations)
 If returnclass="sp" a SpatialLineDataFrame is returned.}
 }
 \value{

@@ -8,6 +8,7 @@
 #' @param overview "full", "simplified". Add geometry either full (detailed) or simplified 
 #' according to highest zoom level it could be display on. 
 #' @param returnclass if returnclass="sf" an sf LINESTRING is returned. 
+#' @param ... additional named arguments passed to the OSRM API (roundtrip, source, destination, annotations)
 #' If returnclass="sp" a SpatialLineDataFrame is returned.
 #' @details As stated in the OSRM API, if input coordinates can not be joined by a single trip 
 #' (e.g. the coordinates are on several disconnecte islands) multiple trips for 
@@ -34,7 +35,8 @@
 #' plot(st_geometry(mytrip), col = c("red", "white"), lwd = 1, add = TRUE)
 #' plot(st_geometry(apotheke.sf), pch = 21, bg = "red", cex = 1, add = TRUE)
 #' }
-osrmTrip <- function(loc, exclude = NULL, overview = "simplified", returnclass="sp"){
+osrmTrip <- function(loc, exclude = NULL, overview = "simplified", returnclass="sp", ...){
+  
   tryCatch({
     # check if inpout is sp, transform and name columns
     oprj <- NA
@@ -52,12 +54,21 @@ osrmTrip <- function(loc, exclude = NULL, overview = "simplified", returnclass="
     exclude_str <- ""
     if (!is.null(exclude)) { exclude_str <- paste("&exclude=", exclude, sep = "") }
     
+    if(length(list(...)) == 0) {
+      API_options_string <- ""
+    } else {
+      dots <- rlang::list2(...)
+      API_options <- paste0(names(dots), "=", dots)
+      API_options_string <- paste("&", API_options, collapse = "", sep = "")
+    }
+
+    
     req <- paste(getOption("osrm.server"),
                  "trip/v1/", getOption("osrm.profile"), "/", 
                  paste(clean_coord(loc$lon) , clean_coord(loc$lat), 
                    sep=",",collapse = ";"),
                  "?steps=false&geometries=geojson&overview=",
-                 tolower(overview), exclude_str, sep = "")
+                 tolower(overview), API_options_string, exclude_str, sep = "")
     
     osrmLimit(nSrc = nrow(loc), nDst = 0, nreq=1)
     # Send the query
@@ -125,10 +136,13 @@ osrmTrip <- function(loc, exclude = NULL, overview = "simplified", returnclass="
       }
       start <- (waypoints[order(waypoints$waypoint_index, decreasing = F),"id"])
       end <- start[c(2:length(start),1)]
-      sldf <- st_sf(start = start, end = end, 
+      
+      nrow_return <- nrow(res$trips[nt,]$legs[[1]])
+      
+      sldf <- st_sf(start = start[1:nrow_return], end = end[1:nrow_return], 
                     duration = res$trips[nt,]$legs[[1]][,"duration"] / 60, 
                     distance = res$trips[nt,]$legs[[1]][,"distance"] / 1000, 
-                    geometry = st_as_sfc(wktl, crs = 4326))
+                    geometry = st_as_sfc(wktl[1:nrow_return], crs = 4326))
       # Reproj
       if (!is.na(oprj)) {
         sldf <- sf::st_transform(sldf, oprj)
